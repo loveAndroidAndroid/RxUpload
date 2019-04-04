@@ -1,1 +1,104 @@
+版本1：
+工作中需要对多个文件的上传进行监听，故有此库。
+因工作中上传接口为公司接口，故不能使用，后续工作会通过阿里云或者腾讯云开辟自己的后台用于此项目。
+
+支持功能：
+1.单文件单回调上传
+2.多文件单回调上传
+3.多文件一对一回调上传
+
+具体使用：
+1.单进度显示上传
+UploadSingleProcessManger类为单文件上传管理类
+
+(1)upLoadFile(UploadSingleItem uploadSingleItem, UploadSubscriberCallBack<T> uploadSubscriberCallBack)单文件上传方法
+(2)upLoadFiles(UploadSingleItem uploadSingleItem, UploadSubscriberCallBack<T> uploadSubscriberCallBack)多文件上传方法
+
+UploadSingleItem类参数解释：
+(1)Class zClass;//retrofit 所需的接口class对象
+(2)String stringMethod;//上传文件的调用方法
+(3)String stringKey;//上传文件所需的标识key(例如imageMultipartFile)
+(4)Map<String, String> paramMap;//上传文件所需的其他参数的字符串
+(5)File file;//单张文件只传file
+(6)List<File> files;//多张文件传files集合
+
+UploadSubscriberCallBack：进度回调CallBack对象
+
+T:上传文件成功后返回的对象（泛型表示）
+
+单进度显示上传使用：
+        UploadSingleItem uploadSingleItem = new UploadSingleItem();
+        ...
+        UploadSingleProcessManger<ImageInfo> uploadSingleProcessManger = new UploadSingleProcessManger<ImageInfo>();
+        uploadSingleProcessManger.upLoadFile(uploadSingleItem, new UploadSubscriberCallBack<ImageInfo>() {
+
+            @Override
+            public void onProgress(int progress) {
+            }
+
+            @Override
+            public void onSuccess(ImageInfo imageInfo) {
+            }
+
+            @Override
+            public void onFailure(Throwable e) {
+            }
+        });
+
+2.一对一文件上传进度显示
+UploadMutiProcessManger：文件上传管理类
+
+进度监听方法
+uploadMutiProcessManger.receiveUploadStatus(uploadItem.getUrlFile())
+                    .subscribe(new Consumer<UploadEvent>() {
+                        @Override
+                        public void accept(UploadEvent uploadEvent) throws Exception {
+                        }
+                    });
+
+开始上传方法：
+uploadMutiProcessManger.startSingleUpload(mUploadItem)
+                    .subscribe(new Consumer<Object>() {
+                        @Override
+                        public void accept(Object o) throws Exception {
+                        }
+                    }, new Consumer<Throwable>() {
+                        @Override
+                        public void accept(Throwable throwable) throws Exception {
+                        }
+                    });
+
+UploadMutiItem参数类展示：
+Class zClass;//retrofit 所需的接口对象
+String stringMethod;//上传文件的方法
+String stringKey;//上传文件所需的key 字符串
+Map<String, String> paramMap;//上传文件所需的其他参数的字符串
+Disposable disposable;//监听文件上传进度的Disposable（用于取消监听进度的订阅）
+String urlFile;//上传文件的url
+int progress = 0;//上传文件的进度记录 用于列表更新进度（用于处理列表状态复用问题）
+
+具体事例在lib-uploadImage文件夹下
+
+注意：onDestroy需执行如下操作
+ @Override
+    protected void onDestroy() {
+        //执行清空任务的操作
+        //clearAllUpload操作必须在clearAllUpload之前执行哦
+        List<UploadMutiItem> list = mAdapter.getList();
+        for (UploadMutiItem uploadItem : list) {
+            uploadItem.getDisposable().dispose();
+            mAdapter.clearAllUpload(uploadItem.getUrlFile());
+        }
+        mAdapter.clearSurUpload();
+        super.onDestroy();
+    }
+
+adapter：
+public void clearSurUpload() {
+        uploadMutiProcessManger.clear();
+    }
+
+public void clearAllUpload(String urlFile) {
+        uploadMutiProcessManger.cancelServiceUpload(urlFile).subscribe();
+    }
 
